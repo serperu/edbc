@@ -480,7 +480,17 @@ put_already_tracing(Bool) ->
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 get_stacktrace() ->
-	tl(tl(try throw(42) catch 42 -> erlang:get_stacktrace() end)).
+	StackTrace = element(2, erlang:process_info(self(), current_stacktrace)),
+	lists:foldl(
+		fun(E,Acc) ->  
+			case element(1,E) of
+				edbc_lib -> Acc;
+				_ -> Acc ++ [E]
+			end
+		end,
+		[],
+		StackTrace).
+	%tl(tl(try throw(42) catch 42 -> erlang:get_stacktrace() end)).
 
 build_call_str([{M, F} | Args]) ->
 	format(

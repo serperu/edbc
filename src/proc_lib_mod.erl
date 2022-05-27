@@ -231,8 +231,8 @@ init_p(Parent, Ancestors, Fun) when is_function(Fun) ->
     try
 	Fun()
     catch
-	Class:Reason ->
-	    exit_p(Class, Reason, erlang:get_stacktrace())
+	Class:Reason:Stacktrace ->
+	    exit_p(Class, Reason, Stacktrace)
     end.
 
 -spec init_p(pid(), [pid()], atom(), atom(), [term()]) -> term().
@@ -246,9 +246,9 @@ init_p_do_apply(M, F, A) ->
     try
 	apply(M, F, A) 
     catch
-	Class:Reason ->
+	Class:Reason:Stacktrace ->
       % io:format("ERROR: ~p\n", [{Class, Reason, erlang:get_stacktrace()}]),
-	    exit_p(Class, Reason, erlang:get_stacktrace())
+	    exit_p(Class, Reason, Stacktrace)
     end.
 
 -spec wake_up(atom(), atom(), [term()]) -> term().
@@ -257,8 +257,8 @@ wake_up(M, F, A) when is_atom(M), is_atom(F), is_list(A) ->
     try
 	apply(M, F, A) 
     catch
-	Class:Reason ->
-	    exit_p(Class, Reason, erlang:get_stacktrace())
+	Class:Reason:Stacktrace ->
+	    exit_p(Class, Reason, Stacktrace)
     end.
 
 exit_p(Class, Reason, Stacktrace) ->

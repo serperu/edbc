@@ -37,34 +37,35 @@ parse_transform(Forms, Options) ->
 		build_funs(Forms1, EDBC_ON),
 
 	% uncomment to print the pretty-printted version of the code
-	% [io:format("~s\n", [lists:flatten(erl_prettypr:format(F))]) || F <- Forms2],
+	% [io:format("~s\n", [lists:flatten(erl_prettypr:format(F))]) || F <- Forms2],
 
-	NewForms = 
+	% NewForms = 
+	ReturnedForms =
 		[erl_syntax:revert(IF) || IF <- Forms2],
-	ReturnedForms = 
-		case EDBC_ON of 
-			true -> 
-				try begin
-						code:load_file(sheriff),
-						sheriff:parse_transform(NewForms, Options) 
-					end
-				of
-					SheriffForms ->
-						% io:format("Succeful Sheriff transformation.\n"),
-						SheriffForms
-				catch
-					E1:E2 ->
-						% io:format("Something went wrong.\n~p\n", [{E1, E2}]),
-						replace_calls_to_sheriff(NewForms)
-				end;
-			false -> 
-				NewForms
-		end,
+	% ReturnedForms = 
+	% 	case EDBC_ON of 
+	% 		true -> 
+	% 			try begin
+	% 					code:load_file(sheriff),
+	% 					sheriff:parse_transform(NewForms, Options) 
+	% 				end
+	% 			of
+	% 				SheriffForms ->
+	% 					% io:format("Succeful Sheriff transformation.\n"),
+	% 					SheriffForms
+	% 			catch
+	% 				E1:E2 ->
+	% 					% io:format("Something went wrong.\n~p\n", [{E1, E2}]),
+	% 					replace_calls_to_sheriff(NewForms)
+	% 			end;
+	% 		false -> 
+	% 			NewForms
+	% 	end,
 
 	% TODO: Remove the unsued function introduced by sheriff
 
 	% uncomment to print the pretty-printted version of the code
-	% [io:format("~s\n", [lists:flatten(erl_prettypr:format(F))]) || F <- ReturnedForms],
+	% [io:format("~s\n", [lists:flatten(erl_prettypr:format(F))]) || F <- ReturnedForms],
 
 	ReturnedForms.
 
@@ -326,7 +327,7 @@ search_edbc_funs(Forms) ->
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Tranform contracts
+% Transform contracts
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 build_funs(Forms, EDBC_ON) -> 
@@ -1318,27 +1319,45 @@ get_free_id(Atom) ->
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % try throw(42) catch 42 -> erlang:get_stacktrace() end,
-build_stack_trace() ->
-	erl_syntax:try_expr(
-		[
-			erl_syntax:application(
-				erl_syntax:module_qualifier(
-						erl_syntax:atom(erlang),
-						erl_syntax:atom(throw)),
-				[erl_syntax:integer(42)])
-		],
-		[
-			erl_syntax:clause(
-				[erl_syntax:integer(42)], 
-				none, 
-				[
-					erl_syntax:application(
-						erl_syntax:module_qualifier(
-								erl_syntax:atom(erlang),
-								erl_syntax:atom(get_stacktrace)),
-						[])
-				])
-		]).
+% erlang:element(2, erlang:process_info(erlang:self(), current_stacktrace))
+build_stack_trace() -> % USEFULL FOR SECER
+	erl_syntax:application(
+			erl_syntax:module_qualifier(
+					erl_syntax:atom(erlang),
+					erl_syntax:atom(element)),
+				[erl_syntax:integer(2), 
+				 erl_syntax:application(
+				 	erl_syntax:module_qualifier(
+				 			erl_syntax:atom(erlang),
+				 			erl_syntax:atom(process_info)),
+				 		[erl_syntax:application(
+				 			erl_syntax:module_qualifier(
+				 				erl_syntax:atom(erlang),
+				 				erl_syntax:atom(self)),
+				 			[]),
+				 		erl_syntax:atom(current_stacktrace)]
+				 )]
+	).
+	% erl_syntax:try_expr(
+	% 	[
+	% 		erl_syntax:application(
+	% 			erl_syntax:module_qualifier(
+	% 					erl_syntax:atom(erlang),
+	% 					erl_syntax:atom(throw)),
+	% 			[erl_syntax:integer(42)])
+	% 	],
+	% 	[
+	% 		erl_syntax:clause(
+	% 			[erl_syntax:integer(42)], 
+	% 			none, 
+	% 			[
+	% 				erl_syntax:application(
+	% 					erl_syntax:module_qualifier(
+	% 							erl_syntax:atom(erlang),
+	% 							erl_syntax:atom(get_stacktrace)),
+	% 					[])
+	% 			])
+	% 	]).
 
 
 % gen_edoc(Form, false, _) -> 

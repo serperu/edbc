@@ -67,7 +67,7 @@ gen_check_funcs([], Module, Acc) ->
 	Func = codegen:gen_function('sherif_$_type_$_generic_$', 
 		fun(Val, Type) when is_atom(Type) ->
 			TypeFunc = list_to_atom("sheriff_$_type_$_" ++ atom_to_list(Type)),
-			{'$var', Module}:TypeFunc(Val);
+			{'$var', erl_parse:parse_term(Module)}:TypeFunc(Val);
 		(Val, Type) when is_list(Type) ->
 			{ModulePart, TypePart} = try
 				[ModulePart2, TypePart2] = string:tokens(Type, ":"),

@@ -22,6 +22,10 @@ else
 		else
 			ebin_path="$current_path/$2"
 		fi
+		if [ ! -d $ebin_path ]
+		then
+			mkdir $ebin_path
+		fi
 		erlc -pa "$edbc_path/ebin" -pa "$edbc_path/deps/sheriff/ebin" -pa "$edbc_path/deps/parse_trans/ebin" -I "$edbc_path/include" -W0 -o $ebin_path -Dedbc $file_path
 	else
 		erlc -pa "$edbc_path/ebin" -pa "$edbc_path/deps/sheriff/ebin" -pa "$edbc_path/deps/parse_trans/ebin" -I "$edbc_path/include" -W0 -Dedbc $file_path
