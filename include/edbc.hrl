@@ -1,4 +1,4 @@
--compile( [{parse_transform, edbc_parse_transform}]).
+-compile([{parse_transform, edbc_parse_transform}]).
 -include_lib("stdlib/include/assert.hrl").
 
 % A condition to be held BEFORE performing a call.

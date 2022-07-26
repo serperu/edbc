@@ -65,7 +65,9 @@ parse_transform(Forms, Options) ->
 	% TODO: Remove the unsued function introduced by sheriff
 
 	% uncomment to print the pretty-printted version of the code
-	% [io:format("~s\n", [lists:flatten(erl_prettypr:format(F))]) || F <- ReturnedForms],
+	filelib:ensure_dir("./tmp/"),
+	{ok, Fd} = file:open("./tmp/transformedFile.erl", [write]),
+	[io:format(Fd, "~s\n", [lists:flatten(erl_prettypr:format(F))]) || F <- ReturnedForms],
 
 	ReturnedForms.
 
@@ -604,6 +606,7 @@ transform_pre_post_function(Form, FunOrBody, OtherForms, IsPost, LibFunction) ->
 								erl_syntax:clause_body(
 									hd(erl_syntax:function_clauses(FormPostFun0))))
 					end,
+
 				{[FormPostFun0], NewBodyFormPostFun0};
 			Body -> 
 				NBody = 
@@ -625,25 +628,62 @@ transform_pre_post_function(Form, FunOrBody, OtherForms, IsPost, LibFunction) ->
 		erl_syntax:application(
 			NewId,
 			ParamVars),
+	PostFreeVar = get_free_variable(),
+	
 	BodyInForm = 
-		erl_syntax:application(
-			erl_syntax:module_qualifier(
-				erl_syntax:atom(edbc_lib),
-				erl_syntax:atom(LibFunction)),
-				[
-					erl_syntax:fun_expr([
-						erl_syntax:clause(
-								[VarResult || IsPost],
-								none,
-								NewBodyFormPostFun
-							)]),
-					erl_syntax:fun_expr([
-						erl_syntax:clause(
-								[],
-								none,
-								[CallToFun]
-							)])
-				]),
+		case {StoreStack, IsPost} of
+			{true, true} ->
+				erl_syntax:application(
+					erl_syntax:module_qualifier(
+						erl_syntax:atom(edbc_lib),
+						erl_syntax:atom(LibFunction)),
+						[
+							erl_syntax:fun_expr([
+								erl_syntax:clause(
+										[VarResult || IsPost],
+										none,
+										NewBodyFormPostFun
+									)]),
+							erl_syntax:fun_expr([
+								erl_syntax:clause(
+										[],
+										none,
+										[CallToFun]
+									)]),
+							erl_syntax:atom(true)
+						]);
+			_ ->
+				erl_syntax:application(
+				erl_syntax:module_qualifier(
+					erl_syntax:atom(edbc_lib),
+					erl_syntax:atom(LibFunction)),
+					[
+						erl_syntax:fun_expr([
+							erl_syntax:clause(
+									[VarResult || IsPost],
+									none,
+									NewBodyFormPostFun
+								)]),
+						erl_syntax:fun_expr([
+							erl_syntax:clause(
+									[],
+									none,
+										case {StoreStack, IsPost} of
+											{true,false} -> 
+												[erl_syntax:match_expr(PostFreeVar,CallToFun),
+												erl_syntax:application(
+														erl_syntax:module_qualifier(
+															erl_syntax:atom(edbc_lib),
+															erl_syntax:atom(cc_stack_pop_call)),
+														[]),
+												PostFreeVar];
+											_ -> 
+												[CallToFun]
+										end
+								)])
+					])
+		end,
+
 	BodyStoreStack = 
 		case StoreStack of 
 			true -> 
@@ -789,6 +829,12 @@ transform_decreases_function(Function, ParNumbers, IsStrict) ->
 	AuxFunction2Pars =
 		[get_free_variable() 
 		|| _ <- lists:seq(1, erl_syntax:function_arity(Function))],
+
+	PostFreeVar = get_free_variable(),
+	CallToFun = erl_syntax:application(
+					Aux2FunctionName, 
+					AuxFunction2Pars),
+
 	AuxFunction2Clause = 
 		erl_syntax:clause(
 			AuxFunction2Pars,
@@ -820,9 +866,15 @@ transform_decreases_function(Function, ParNumbers, IsStrict) ->
 						erl_syntax:atom(edbc_lib),
 						erl_syntax:atom(put_call)),
 						[erl_syntax:list([FunctionName | AuxFunction2Pars])]),
+				
+				erl_syntax:match_expr(PostFreeVar,CallToFun),
 				erl_syntax:application(
-					Aux2FunctionName, 
-					AuxFunction2Pars)
+						erl_syntax:module_qualifier(
+							erl_syntax:atom(edbc_lib),
+							erl_syntax:atom(cc_stack_pop_call)),
+							[]),
+				PostFreeVar
+
 			]),
 	AuxFunction2 = 
 		erl_syntax:function(
@@ -1272,7 +1324,7 @@ annotate_bindings_form(_, Form)->
 		ordsets:new()).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Free variables managment
+% Free variables management
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 send_vars(Form) ->

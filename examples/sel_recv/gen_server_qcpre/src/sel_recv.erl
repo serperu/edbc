@@ -14,10 +14,11 @@ start_link() ->
     gen_server_cpre:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 stop() -> 
+    timer:sleep(100),
     gen_server_cpre:stop(?MODULE).
 
 test() ->
-  gen_server_cpre:call(?MODULE, test).
+    gen_server_cpre:call(?MODULE, test).
 
 init([]) ->
     {ok, 0}.
@@ -26,7 +27,7 @@ cpre({result, N}, _, State = [N|R]) ->
   %io:format("Message ~p served\n",[N]),
   {true, State};
 cpre({result, N}, _, State) ->
-  %io:format("Message ~p returned to the mailbox\n",[N]),
+  io:format("Message ~p delayed\n",[N]),
   {false, State};
 cpre(test, _, State) ->
   {true, State}.

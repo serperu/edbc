@@ -18,6 +18,10 @@ run_simple:
 	@scripts/edbc_erlc examples/simple/src/simple.erl examples/simple/ebin
 	@scripts/edbc_erl examples/simple/ebin 
 
+run_simple2:
+	@scripts/edbc_erlc examples/simple/src/simple2.erl examples/simple/ebin
+	@scripts/edbc_erl examples/simple/ebin 
+
 run_bridge_fair:
 	@scripts/edbc_erlc "examples/bridge/fair/src/*.erl" examples/bridge/fair/ebin
 	@scripts/edbc_erl examples/bridge/fair/ebin "bridge_test:test()"
@@ -67,11 +71,11 @@ test_sel_recv:
 
 test_sel_recv_q:
 	@scripts/edbc_erlc "examples/sel_recv/gen_server_qcpre/src/*.erl" examples/sel_recv/gen_server_qcpre/ebin
-	@erl -pa "examples/sel_recv/gen_server_qcpre/ebin" "ebin" "deps/sheriff/ebin" "deps/parse_trans/ebin" -eval "sel_recv_test:test()" -s erlang halt  
+	@scripts/edbc_erl examples/sel_recv/gen_server_qcpre/ebin "sel_recv_test:test()"
 
 test_sel_recv_q2:
 	@scripts/edbc_erlc "examples/sel_recv/gen_server_qcpre/src/*.erl" examples/sel_recv/gen_server_qcpre/ebin
-	@scripts/edbc_erl examples/sel_recv/gen_server_qcpre/ebin "sel_recv_test:test()"
+	@erl -pa "examples/sel_recv/gen_server_qcpre/ebin" "ebin" "deps/sheriff/ebin" "deps/parse_trans/ebin" -eval "sel_recv_test:test()" -s erlang halt  
 
 load_ej_paper:
 	@scripts/edbc_erlc examples/other/src/ej_paper.erl examples/other/ebin

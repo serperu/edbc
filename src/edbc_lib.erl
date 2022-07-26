@@ -5,6 +5,7 @@
 			sdecreasing_check/3, 
 			pre/2, 
 			post/2,
+			post/3,
 			expected_time/2,
 			timeout/2,
 			is_pure/2,
@@ -12,6 +13,7 @@
 			spec_check_post/2,
 			put_st/0,
 			put_call/1,
+			cc_stack_pop_call/0,
 			put_already_tracing/1
 			% sheriff_check/2
 		]).
@@ -83,7 +85,8 @@ decreasing_check_gen(NewValues, OldValues, F, CompFun) ->
 					" Previous call: ~s."
 					" Current call: ~s.",
 					[build_call_str([FN | OldValues]), build_call_str([FN | NewValues])]),
-			error({ErrorMsg, get(edbc_st)});
+			%error({ErrorMsg, get(edbc_st)});
+			error(ErrorMsg);
 		{false, Msg} -> 
 			[FN | _] = 
 				get(edbc_cc),
@@ -94,7 +97,8 @@ decreasing_check_gen(NewValues, OldValues, F, CompFun) ->
 					" Current call: ~s."
 					" ~s",
 					[build_call_str([FN | OldValues]), build_call_str([FN | NewValues]), Msg]),
-			error({ErrorMsg, get(edbc_st)})
+			%error({ErrorMsg, get(edbc_st)})
+			error(ErrorMsg)
 	end.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -112,13 +116,15 @@ pre(Pre, Call) ->
 				format(
 					"The precondition does not hold. ~s.",
 					[last_call_str()]),
-			error({ErrorMsg, get(edbc_st)});
+			%error({ErrorMsg, get(edbc_st)});
+			error(ErrorMsg);
 		{false, Msg} -> 
 			ErrorMsg = 
 				format(
 					"The precondition does not hold. ~s. ~s",
 					[last_call_str(), Msg]),
-			error({ErrorMsg, get(edbc_st)})
+			%error({ErrorMsg, get(edbc_st)})
+			error(ErrorMsg)
 	end.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -135,8 +141,39 @@ post(Post, Call) ->
 		{Rep, invariant} ->
 			show_post_report(Rep, Res, "invariant");
 		Rep -> 
-			show_post_report(Rep, Res, "postcondition")
+  			show_post_report(Rep, Res, "postcondition")
 	end.
+
+post(Post, Call, true) ->
+	Res =  Call(),
+	case Post(Res) of 
+		true -> 
+			cc_stack_pop_call(),
+			Res;
+		{true, _} -> 
+			cc_stack_pop_call(),
+			Res;
+		{Rep, invariant} ->
+			show_post_report(Rep, Res, "invariant");
+		Rep -> 
+  			show_post_report(Rep, Res, "postcondition")
+	end.
+
+% show_post_report(Rep, Res, StrPost) ->
+% 	case Rep of 
+% 		false -> 
+% 			ErrorMsg = 
+% 				format(
+% 					"The ~s does not hold. ~s. Result: ~p",
+% 					[StrPost, last_call_str(), Res]),
+% 			error({ErrorMsg, get(edbc_st)});
+% 		{false, Msg} -> 
+% 			ErrorMsg = 
+% 				format(
+% 					"The ~s does not hold. ~s. Result: ~p. ~s",
+% 					[StrPost, last_call_str(), Res, Msg]),
+% 			error({ErrorMsg, get(edbc_st)})
+% 	end.
 
 show_post_report(Rep, Res, StrPost) ->
 	case Rep of 
@@ -145,13 +182,13 @@ show_post_report(Rep, Res, StrPost) ->
 				format(
 					"The ~s does not hold. ~s. Result: ~p",
 					[StrPost, last_call_str(), Res]),
-			error({ErrorMsg, get(edbc_st)});
+			error(ErrorMsg);
 		{false, Msg} -> 
 			ErrorMsg = 
 				format(
 					"The ~s does not hold. ~s. Result: ~p. ~s",
 					[StrPost, last_call_str(), Res, Msg]),
-			error({ErrorMsg, get(edbc_st)})
+			error(ErrorMsg)
 	end.	
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -178,7 +215,8 @@ expected_time(Time, Call) ->
 					" took too much time."
 					"Real: ~p ms. Expected: ~p ms. Difference: ~p ms).", 
 					[simple_last_call_str(), ExeTime, Expected, ExeTime - Expected]),
-			error({ErrorMsg, get_stacktrace()})
+			%error({ErrorMsg, get_stacktrace()})
+			error(ErrorMsg)
 	end.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -204,7 +242,8 @@ timeout(Time, Call) ->
 					" has been stopped"
 					" because it took more time than the expected, i.e. ~p ms.", 
 					[simple_last_call_str(), Timeout]),
-			error({ErrorMsg, get_stacktrace()})
+			% error({ErrorMsg, get_stacktrace()})
+			error(ErrorMsg)
 	end.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -220,13 +259,15 @@ spec_check_pre(Pre, Call) ->
 				format(
 					"The spec precondition does not hold. ~s.",
 					[last_call_str()]),
-			error({ErrorMsg, get(edbc_st)});
+			%error({ErrorMsg, get(edbc_st)});
+			error(ErrorMsg);
 		{false, Msg} -> 
 			ErrorMsg = 
 				format(
 					"The spec precondition does not hold. ~s. ~s",
 					[last_call_str(), Msg]),
-			error({ErrorMsg, get(edbc_st)})
+			%error({ErrorMsg, get(edbc_st)})
+			error(ErrorMsg)
 	end.
 	
 
@@ -244,13 +285,16 @@ spec_check_post(Post, Call) ->
 				format(
 					"The spec postcondition does not hold. ~s.",
 					[last_call_str()]),
-			error({ErrorMsg, get(edbc_st)});
+			%error({ErrorMsg, get(edbc_st)});
+			error(ErrorMsg);
 		{false, Msg} -> 
 			ErrorMsg = 
 				format(
 					"The spec postcondition does not hold. ~s. ~s",
 					[last_call_str(), Msg]),
-			error({ErrorMsg, get(edbc_st)})
+			%error({ErrorMsg, get(edbc_st)})
+			error(ErrorMsg)
+			
 	end.
 
 
@@ -323,19 +367,24 @@ is_pure(Call) ->
 						format(
 							"The function is not pure. ~s.",
 							[last_call_str()]),
-					error({ErrorMsg, get(edbc_st)});
+					%error({ErrorMsg, get(edbc_st)});
+					error(ErrorMsg);
 				{edbc_error, Msg} ->
 					ErrorMsg = 
 						format(
 							"The function is not pure. ~s. ~s",
 							[last_call_str(), Msg]),
-					error({ErrorMsg, get(edbc_st)});
+					%error({ErrorMsg, get(edbc_st)});
+					error(ErrorMsg);
 				{edbc_error_call, {error, Reason}} -> 
-					error({Reason, get(edbc_st)});
+					%error({Reason, get(edbc_st)});
+					error(Reason);
 				{edbc_error_call, {throw, Reason}} -> 
-					throw({Reason, get(edbc_st)});
+					%throw({Reason, get(edbc_st)});
+					throw(Reason);
 				{edbc_error_call, {exit, Reason}} -> 
-					exit({Reason, get(edbc_st)});
+					%exit({Reason, get(edbc_st)});
+					exit(Reason);
 				Res -> 
 					Res
 			end
@@ -470,7 +519,25 @@ put_st() ->
 	put(edbc_st, get_stacktrace()).
 
 put_call(Args) ->
+	case get(edbc_cc_stack) of
+		undefined ->
+			put(edbc_cc_stack, [Args]);
+		CCStack ->
+			NewStack = [Args | CCStack],
+			put(edbc_cc_stack,[Args | CCStack])
+	end,
 	put(edbc_cc, Args).
+
+cc_stack_pop_call() ->
+	PrevStack = get(edbc_cc_stack),
+	case length(PrevStack) >= 2 of
+		true ->
+			[_,NewHead|Stack] = PrevStack,
+			put(edbc_cc_stack,[NewHead|Stack]),
+			put(edbc_cc, NewHead);
+		false ->
+			put(edbc_cc, undefined)
+	end.
 
 put_already_tracing(Bool) ->
 	put(already_tracing, Bool).

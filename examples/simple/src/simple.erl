@@ -5,6 +5,7 @@
 
 
 ?PRE(fun pre_f/0).
+?DECREASES(?P(1)).
 f(0) -> 10;
 f(N) -> 
     Prev = f(N-1),
